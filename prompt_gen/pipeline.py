@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from prompt_gen.agentic_validator import AgenticValidator
+from prompt_gen.competitor_analyzer import CompetitorAnalyzer
 from prompt_gen.config import Settings
 from prompt_gen.correlation_engine import CorrelationEngine
 from prompt_gen.crawler import WebCrawler
@@ -38,13 +39,19 @@ class Pipeline:
         self.extractor = PromptExtractor(settings.prompt_extraction, self.llm)
         self.validator = AgenticValidator(settings.prompt_extraction, self.llm)
         self.factchecker = Factchecker(settings.factcheck, self.llm)
+        self.competitor_analyzer = CompetitorAnalyzer(
+            settings.crawler, settings.prompt_extraction, self.llm
+        )
         self.gsc_client = SearchConsoleClient(settings.google)
         self.ga_client = AnalyticsClient(settings.google)
         self.correlation = CorrelationEngine(settings, self.llm)
         self.reporter = ReportGenerator(settings.output_dir)
 
+        # Pipeline state
         self.pages: list[CrawledPage] = []
         self.prompts: list[ExtractedPrompt] = []
+        self.competitor_prompts: list[ExtractedPrompt] = []
+        self.competitors: list[dict] = []
         self.validations: list[ValidationResult] = []
         self.factchecks: list[FactcheckResult] = []
         self.correlated: list[CorrelatedPrompt] = []
@@ -107,12 +114,83 @@ class Pipeline:
 
         self.prompts = self.extractor.extract_prompts(self.pages, progress_callback)
 
+        # Merge competitor prompts if available
+        if self.competitor_prompts:
+            pre_merge = len(self.prompts)
+            # Deduplicate against existing prompts
+            existing_texts = {p.prompt_text.lower().strip() for p in self.prompts}
+            new_comp_prompts = [
+                p for p in self.competitor_prompts
+                if p.prompt_text.lower().strip() not in existing_texts
+            ]
+            self.prompts.extend(new_comp_prompts)
+            logger.info(
+                f"Merged {len(new_comp_prompts)} unique competitor prompts "
+                f"(from {len(self.competitor_prompts)} total, "
+                f"{pre_merge} existing → {len(self.prompts)} combined)"
+            )
+
         self._save_cache(
             "extract", [p.to_dict() for p in self.prompts]
         )
 
         logger.info(f"Extraction complete: {len(self.prompts)} prompts")
         return self.prompts
+
+    def stage_competitors(
+        self,
+        target_url: str,
+        manual_competitors: Optional[list[str]] = None,
+        max_competitors: int = 5,
+        max_pages_per_competitor: int = 15,
+        progress_callback=None,
+    ) -> tuple[list[dict], list[ExtractedPrompt]]:
+        """
+        Stage 1.5: Analyze competitors and extract their prompts.
+
+        Runs between crawl and extract stages. Discovered competitor
+        prompts are stored and merged during the extract stage.
+
+        Args:
+            target_url: The target website URL.
+            manual_competitors: Optional list of competitor domains.
+            max_competitors: Maximum competitors to analyze.
+            max_pages_per_competitor: Max pages per competitor.
+            progress_callback: Optional callback(current, total, name).
+
+        Returns:
+            Tuple of (competitor_info, competitor_prompts).
+        """
+        if not self.pages:
+            raise ValueError("No pages available. Run crawl stage first.")
+
+        logger.info("=== STAGE 1.5: COMPETITOR ANALYSIS ===")
+
+        self.competitors, self.competitor_prompts = (
+            self.competitor_analyzer.analyze_competitors(
+                target_url=target_url,
+                target_pages=self.pages,
+                manual_competitors=manual_competitors,
+                max_competitors=max_competitors,
+                max_pages_per_competitor=max_pages_per_competitor,
+                progress_callback=progress_callback,
+            )
+        )
+
+        # Cache results
+        self._save_cache(
+            "competitors",
+            {
+                "competitors": self.competitors,
+                "prompts": [p.to_dict() for p in self.competitor_prompts],
+            },
+        )
+
+        logger.info(
+            f"Competitor analysis complete: {len(self.competitors)} competitors, "
+            f"{len(self.competitor_prompts)} prompts"
+        )
+        return self.competitors, self.competitor_prompts
 
     def stage_validate(self, progress_callback=None) -> list[ValidationResult]:
         """Validate extracted prompts and update their statuses."""
@@ -324,30 +402,47 @@ class Pipeline:
         skip_google_apis: bool = False,
         skip_validation: bool = False,
         skip_factcheck: bool = False,
+        skip_competitors: bool = False,
+        manual_competitors: Optional[list[str]] = None,
+        max_competitors: int = 5,
         gsc_csv_path: Optional[str] = None,
         ga_csv_path: Optional[str] = None,
         progress_callback=None,
     ) -> dict[str, str]:
         """Run the pipeline and return report paths keyed by format.
 
-        Validation, factchecking, and Google API calls can be skipped independently.
-        CSV inputs take precedence over Google APIs. The progress_callback parameter
-        is retained for compatibility but is not called; use stage callbacks for progress.
+        Validation, factchecking, competitor analysis, and Google API calls
+        can be skipped independently. CSV inputs take precedence over Google APIs.
         """
         logger.info(f"Starting PromptGen pipeline for: {target_url}")
         logger.info(f"Options: skip_google={skip_google_apis}, "
                      f"skip_validation={skip_validation}, "
-                     f"skip_factcheck={skip_factcheck}")
+                     f"skip_factcheck={skip_factcheck}, "
+                     f"skip_competitors={skip_competitors}")
+        if manual_competitors:
+            logger.info(f"Manual competitors: {manual_competitors}")
         if gsc_csv_path:
             logger.info(f"GSC data source: CSV file ({gsc_csv_path})")
         if ga_csv_path:
             logger.info(f"GA data source: CSV file ({ga_csv_path})")
 
+        # Stage 1: Crawl
         self.stage_crawl(target_url)
 
         if not self.pages:
             raise RuntimeError(f"No pages crawled from {target_url}")
 
+        # Stage 1.5: Competitor Analysis (before extraction so prompts merge)
+        if not skip_competitors:
+            self.stage_competitors(
+                target_url=target_url,
+                manual_competitors=manual_competitors,
+                max_competitors=max_competitors,
+            )
+        else:
+            logger.info("Skipping competitor analysis")
+
+        # Stage 2: Extract (merges competitor prompts automatically)
         self.stage_extract()
 
         if not self.prompts:
@@ -380,6 +475,9 @@ class Pipeline:
         logger.info("=" * 60)
         logger.info("PIPELINE COMPLETE")
         logger.info(f"Pages crawled: {len(self.pages)}")
+        if self.competitors:
+            logger.info(f"Competitors analyzed: {len(self.competitors)}")
+            logger.info(f"Competitor prompts: {len(self.competitor_prompts)}")
         logger.info(f"Prompts extracted: {len(self.prompts)}")
         if self.validations:
             min_score = self.settings.prompt_extraction.min_quality_score

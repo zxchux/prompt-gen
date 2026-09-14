@@ -96,6 +96,24 @@ def cli():
     help="Path to GA page data CSV (exported from Google Analytics).",
 )
 @click.option(
+    "--competitors",
+    default=None,
+    type=str,
+    help="Comma-separated list of competitor domains (e.g., 'comp1.com,comp2.com').",
+)
+@click.option(
+    "--max-competitors",
+    default=5,
+    type=int,
+    help="Maximum number of competitors to analyze (default: 5).",
+)
+@click.option(
+    "--skip-competitors",
+    is_flag=True,
+    default=False,
+    help="Skip competitor analysis stage.",
+)
+@click.option(
     "--model",
     default=None,
     type=str,
@@ -122,6 +140,9 @@ def analyze(
     skip_google: bool,
     gsc_csv: str,
     ga_csv: str,
+    competitors: str,
+    max_competitors: int,
+    skip_competitors: bool,
     model: str,
     output_dir: str,
     log_level: str,
@@ -132,7 +153,13 @@ def analyze(
         promptgen analyze https://example.com
         promptgen analyze https://example.com --max-pages 100 --skip-google
         promptgen analyze https://example.com --gsc-csv gsc_queries.csv --ga-csv ga_pages.csv
+        promptgen analyze https://example.com --competitors "labster.com,chemcollective.org"
     """
+    # Parse manual competitors
+    manual_competitors = None
+    if competitors:
+        manual_competitors = [c.strip() for c in competitors.split(",") if c.strip()]
+
     settings = load_settings()
 
     if max_pages:
@@ -212,6 +239,35 @@ def analyze(
 
             console.print(f"  ✓ Crawled [green]{len(pipeline.pages)}[/green] pages")
 
+            # Stage 1.5: Competitor Analysis
+            if not skip_competitors:
+                comp_task = progress.add_task(
+                    "[cyan]Analyzing competitors...", total=max_competitors
+                )
+
+                def comp_progress(current, total, name):
+                    progress.update(
+                        comp_task,
+                        completed=current,
+                        total=total,
+                        description=f"[cyan]Analyzing competitor: {name}...",
+                    )
+
+                pipeline.stage_competitors(
+                    target_url=url,
+                    manual_competitors=manual_competitors,
+                    max_competitors=max_competitors,
+                    progress_callback=comp_progress,
+                )
+                progress.update(comp_task, completed=max_competitors)
+                console.print(
+                    f"  ✓ Analyzed [green]{len(pipeline.competitors)}[/green] competitors, "
+                    f"found [green]{len(pipeline.competitor_prompts)}[/green] competitor prompts"
+                )
+            else:
+                console.print("  ⊘ Competitor analysis skipped")
+
+            # Stage 2: Extract (merges competitor prompts)
             extract_task = progress.add_task(
                 "[cyan]Extracting prompts...", total=100
             )
@@ -225,8 +281,13 @@ def analyze(
 
             pipeline.stage_extract(progress_callback=extract_progress)
             progress.update(extract_task, completed=100)
+            comp_note = (
+                f" (includes {len(pipeline.competitor_prompts)} from competitors)"
+                if pipeline.competitor_prompts
+                else ""
+            )
             console.print(
-                f"  ✓ Extracted [green]{len(pipeline.prompts)}[/green] prompts"
+                f"  ✓ Extracted [green]{len(pipeline.prompts)}[/green] prompts{comp_note}"
             )
 
             if not skip_validation:
