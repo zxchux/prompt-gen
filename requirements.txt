@@ -1,0 +1,55 @@
+# Web Crawling
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+scrapy>=2.11.0
+playwright>=1.40.0
+aiohttp>=3.9.0
+
+# URL & Content Processing
+urllib3>=2.1.0
+tldextract>=5.1.0
+readability-lxml>=0.8.1
+trafilatura>=1.6.0
+
+# LLM & AI
+openai>=1.12.0
+tiktoken>=0.5.0
+
+# Google APIs
+google-api-python-client>=2.108.0
+google-auth>=2.25.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+google-analytics-data>=0.18.0
+
+# Data Processing
+pandas>=2.1.0
+numpy>=1.26.0
+scikit-learn>=1.3.0
+
+# Async & Concurrency
+asyncio-throttle>=1.0.0
+
+# Configuration & Environment
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# CLI & Output
+rich>=13.7.0
+click>=8.1.0
+tabulate>=0.9.0
+
+# Logging
+structlog>=23.2.0
+
+# Rate Limiting
+ratelimit>=2.2.1
+
+# Caching
+diskcache>=5.6.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
