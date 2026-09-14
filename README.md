@@ -1,18 +1,18 @@
 # PromptGen - AI-Powered Website Prompt Discovery & Validation Engine
 
-PromptGen crawls any website, auto-discovers competitors, identifies the top 500 search prompts the site and its competitors rank for, validates them using adversarial agentic LLM reasoning and the Profound factcheck methodology, then correlates with Google Search Console and Analytics data to surface high-impact monitoring opportunities.
+PromptGen crawls any website, auto-discovers competitors, identifies the top 500 search prompts the site and its competitors rank for, validates them using adversarial agentic LLM reasoning and the does factcheck methodology, then correlates with Google Search Console and Analytics data to surface high-impact monitoring opportunities.
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                          PromptGen Pipeline                              │
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          PromptGen Pipeline                             │
 ├──────────┬────────────┬──────────┬───────────┬───────────┬──────┬───────┤
-│ Stage 1  │ Stage 1.5  │ Stage 2  │  Stage 3  │  Stage 4  │  5   │  6   │
-│  Crawl   │ Competitor │ Extract  │ Validate  │ Factcheck │Corr. │Report│
-│  Target  │ Discovery  │ Prompts  │ (Agentic  │(Profound) │GSC+GA│      │
-│          │ & Analysis │ + Merge  │  Debate)  │           │      │      │
-└────┬─────┴─────┬──────┴────┬─────┴─────┬─────┴─────┬─────┴──┬───┴──┬───┘
+│ Stage 1  │ Stage 1.5  │ Stage 2  │  Stage 3  │  Stage 4  │  5   │  6    │
+│  Crawl   │ Competitor │ Extract  │ Validate  │ Factcheck │Corr. │Report │
+│  Target  │ Discovery  │ Prompts  │ (Agentic  │.          │GSC+GA│       │
+│          │ & Analysis │ + Merge  │  Debate)  │           │      │       │
+└────┬─────┴─────┬──────┴────┬─────┴─────┬─────┴─────┬─────┴──┬───┴──┬──-─┘
      │           │           │           │           │        │      │
      ▼           ▼           ▼           ▼           ▼        ▼      ▼
   Website    Auto-find    Top 500    Proposer    Decompose  Fuzzy  JSON
@@ -61,8 +61,8 @@ PromptGen crawls any website, auto-discovers competitors, identifies the top 500
 - Weighted scoring: accuracy (30%) + faithfulness (30%) + quality (40%)
 - Only prompts that survive the debate pass (0.7 threshold)
 
-### 5. Profound Factcheck Methodology
-- Implements the 4-step Profound factcheck pipeline:
+### 5. Factcheck Methodology
+- Implements the 4-step factcheck pipeline:
   - **Decompose**: Break prompt into atomic verifiable claims
   - **Decontextualize**: Make claims self-contained
   - **Verify**: Check claims against source content (multiple rounds)
@@ -308,7 +308,7 @@ Reports are generated in the `output/` directory:
 - Each agent sees the full conversation history
 - Prompts below 0.7 threshold are rejected
 
-### Stage 4: Profound Factcheck
+### Stage 4: Factcheck
 - 4-step factcheck pipeline per prompt:
   1. Decompose into atomic claims
   2. Decontextualize for independent verification
@@ -340,7 +340,7 @@ Options:
   --max-competitors INTEGER    Max competitors to analyze (default: 5)
   --skip-competitors           Skip competitor analysis
   --skip-validation            Skip agentic validation
-  --skip-factcheck             Skip Profound factcheck
+  --skip-factcheck             Skip factcheck
   --skip-google                Skip Google API calls
   --gsc-csv PATH               GSC query data CSV file
   --ga-csv PATH                GA page data CSV file
@@ -403,7 +403,7 @@ prompt-gen/
 │   ├── competitor_analyzer.py   # Competitor discovery & analysis
 │   ├── prompt_extractor.py      # Prompt extraction engine
 │   ├── agentic_validator.py     # Adversarial debate validator
-│   ├── factcheck.py             # Profound factcheck module
+│   ├── factcheck.py             # factcheck module
 │   ├── csv_importer.py          # GSC/GA CSV data importer
 │   ├── google_search_console.py # GSC API integration
 │   ├── google_analytics.py      # GA4 API integration
