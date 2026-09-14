@@ -144,7 +144,7 @@ class FactcheckClaim:
 
 @dataclass
 class FactcheckResult:
-    """Result of Profound factcheck validation."""
+    """Result of factcheck validation."""
 
     prompt_text: str
     claims: list[FactcheckClaim] = field(default_factory=list)

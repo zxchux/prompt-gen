@@ -100,7 +100,8 @@ class OpenRouterClient:
                 if attempt < retry_count - 1:
                     wait_time = 2 ** attempt
                     logger.warning(
-                        f"API error: {e}, retrying in {wait_time}s (attempt {attempt + 1}/{retry_count})"
+                        f"API error: {e}, retrying in {wait_time}s "
+                        f"(attempt {attempt + 1}/{retry_count})"
                     )
                     time.sleep(wait_time)
                 else:

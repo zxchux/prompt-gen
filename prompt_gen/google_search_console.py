@@ -36,7 +36,7 @@ class SearchConsoleClient:
             from google_auth_oauthlib.flow import InstalledAppFlow
             from googleapiclient.discovery import build
 
-            SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"]
+            scopes = ["https://www.googleapis.com/auth/webmasters.readonly"]
 
             creds = None
             token_path = Path(self.config.gsc_token_file)
@@ -44,7 +44,7 @@ class SearchConsoleClient:
 
             if token_path.exists():
                 creds = Credentials.from_authorized_user_file(
-                    str(token_path), SCOPES
+                    str(token_path), scopes
                 )
 
             if not creds or not creds.valid:
@@ -60,7 +60,7 @@ class SearchConsoleClient:
                         return False
 
                     flow = InstalledAppFlow.from_client_secrets_file(
-                        str(creds_path), SCOPES
+                        str(creds_path), scopes
                     )
                     creds = flow.run_local_server(port=0)
 

@@ -2,7 +2,6 @@
 
 import json
 import logging
-from typing import Any
 
 from prompt_gen.config import PromptExtractionConfig
 from prompt_gen.llm_client import OpenRouterClient
@@ -10,7 +9,10 @@ from prompt_gen.models import CrawledPage, ExtractedPrompt
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT_EXTRACT = """You are an expert SEO analyst and search intent specialist. Your task is to analyze website page content and identify the search queries/prompts that this page would rank for in search engines.
+SYSTEM_PROMPT_EXTRACT = """\
+You are an expert SEO analyst and search intent specialist. Your task is \
+to analyze website page content and identify the search queries/prompts \
+that this page would rank for in search engines.
 
 For each page, identify search queries that:
 1. Match the page's topic, content, and intent
@@ -44,7 +46,9 @@ You MUST respond with valid JSON in this exact format:
   ]
 }"""
 
-SYSTEM_PROMPT_CONSOLIDATE = """You are an expert SEO analyst. You have been given a large list of search prompts/queries extracted from multiple pages of a website. Your task is to:
+SYSTEM_PROMPT_CONSOLIDATE = """\
+You are an expert SEO analyst. You have been given a large list of search \
+prompts/queries extracted from multiple pages of a website. Your task is to:
 
 1. DEDUPLICATE: Remove near-duplicate queries (keep the best version)
 2. RANK: Score each unique query by its overall value considering:
@@ -74,14 +78,18 @@ You MUST respond with valid JSON in this exact format:
   ]
 }"""
 
-SYSTEM_PROMPT_SITE_ANALYSIS = """You are an expert SEO analyst. Analyze the overall structure and content of this website based on the page summaries provided. Identify:
+SYSTEM_PROMPT_SITE_ANALYSIS = """\
+You are an expert SEO analyst. Analyze the overall structure and content \
+of this website based on the page summaries provided. Identify:
 
 1. The website's primary topics and themes
 2. The target audience
 3. The types of content (blog posts, product pages, documentation, etc.)
 4. Key topic clusters the site covers
 
-Then generate additional search prompts that the website SHOULD rank for based on its overall content strategy, even if specific pages weren't perfectly optimized for them.
+Then generate additional search prompts that the website SHOULD rank for \
+based on its overall content strategy, even if specific pages weren't \
+perfectly optimized for them.
 
 You MUST respond with valid JSON in this exact format:
 {

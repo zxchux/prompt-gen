@@ -2,7 +2,6 @@
 
 import json
 import logging
-from typing import Any
 
 from prompt_gen.config import PromptExtractionConfig
 from prompt_gen.llm_client import OpenRouterClient
@@ -15,7 +14,10 @@ from prompt_gen.models import (
 
 logger = logging.getLogger(__name__)
 
-DEBATE_SYSTEM_PROMPT = """You are participating in a rigorous multi-agent debate to evaluate whether a search prompt/query is valid, accurate, faithful, and high-quality for a specific website.
+DEBATE_SYSTEM_PROMPT = """\
+You are participating in a rigorous multi-agent debate to evaluate whether \
+a search prompt/query is valid, accurate, faithful, and high-quality for a \
+specific website.
 
 You will be asked to take on different roles during this debate:
 - PROPOSER: Argue FOR the prompt's validity with evidence
@@ -23,7 +25,10 @@ You will be asked to take on different roles during this debate:
 - DEFENDER: Counter the challenges with specific evidence
 - JUDGE: Weigh all arguments and deliver a final verdict
 
-Be thorough, specific, and cite evidence from the source content. Do not be superficial - dig deep into potential issues. When challenging, be genuinely adversarial. When defending, address each challenge directly. When judging, be fair but rigorous.
+Be thorough, specific, and cite evidence from the source content. Do not \
+be superficial - dig deep into potential issues. When challenging, be \
+genuinely adversarial. When defending, address each challenge directly. \
+When judging, be fair but rigorous.
 
 Always respond with valid JSON as specified in each turn."""
 
@@ -55,7 +60,8 @@ Respond with JSON:
 }}"""
 
 TURN_2_CHALLENGER = """ROLE: CHALLENGER (Devil's Advocate)
-You must now CHALLENGE the Proposer's arguments. Your job is to find every possible weakness, flaw, and reason this prompt might be INVALID.
+You must now CHALLENGE the Proposer's arguments. Your job is to find \
+every possible weakness, flaw, and reason this prompt might be INVALID.
 
 The Proposer argued:
 {proposer_arguments}
@@ -106,7 +112,8 @@ Original Proposer's Case:
 For each challenge:
 1. Acknowledge if the concern has merit
 2. Provide counter-evidence or counter-arguments
-3. Explain why the prompt should still be considered valid (or concede if the challenge is too strong)
+3. Explain why the prompt should still be considered valid \
+(or concede if the challenge is too strong)
 
 Be honest - if a challenge is valid and cannot be countered, admit it.
 
@@ -441,8 +448,10 @@ class AgenticValidator:
             if progress_callback:
                 progress_callback(i + 1, total)
 
+            passed = result.overall_score >= self.config.min_quality_score
+            verdict = "PASS" if passed else "FAIL"
             logger.info(
-                f"  → Verdict: {'PASS' if result.overall_score >= self.config.min_quality_score else 'FAIL'} "
+                f"  → Verdict: {verdict} "
                 f"(score: {result.overall_score:.2f}) | "
                 f"Accuracy: {result.accuracy_score:.2f} | "
                 f"Faithful: {result.faithfulness_score:.2f} | "

@@ -10,7 +10,7 @@ from prompt_gen.config import Settings
 from prompt_gen.correlation_engine import CorrelationEngine
 from prompt_gen.crawler import WebCrawler
 from prompt_gen.csv_importer import CSVImporter
-from prompt_gen.factcheck import ProfoundFactchecker
+from prompt_gen.factcheck import Factchecker
 from prompt_gen.google_analytics import AnalyticsClient
 from prompt_gen.google_search_console import SearchConsoleClient
 from prompt_gen.llm_client import OpenRouterClient
@@ -37,7 +37,7 @@ class Pipeline:
         self.crawler = WebCrawler(settings.crawler)
         self.extractor = PromptExtractor(settings.prompt_extraction, self.llm)
         self.validator = AgenticValidator(settings.prompt_extraction, self.llm)
-        self.factchecker = ProfoundFactchecker(settings.factcheck, self.llm)
+        self.factchecker = Factchecker(settings.factcheck, self.llm)
         self.gsc_client = SearchConsoleClient(settings.google)
         self.ga_client = AnalyticsClient(settings.google)
         self.correlation = CorrelationEngine(settings, self.llm)
@@ -381,8 +381,22 @@ class Pipeline:
         logger.info("PIPELINE COMPLETE")
         logger.info(f"Pages crawled: {len(self.pages)}")
         logger.info(f"Prompts extracted: {len(self.prompts)}")
-        logger.info(f"Prompts validated: {sum(1 for v in self.validations if v.overall_score >= self.settings.prompt_extraction.min_quality_score) if self.validations else 'skipped'}")
-        logger.info(f"Prompts factchecked: {sum(1 for f in self.factchecks if f.is_factually_sound) if self.factchecks else 'skipped'}")
+        if self.validations:
+            min_score = self.settings.prompt_extraction.min_quality_score
+            valid_count = sum(
+                1 for v in self.validations
+                if v.overall_score >= min_score
+            )
+            logger.info(f"Prompts validated: {valid_count}")
+        else:
+            logger.info("Prompts validated: skipped")
+        if self.factchecks:
+            fc_count = sum(
+                1 for f in self.factchecks if f.is_factually_sound
+            )
+            logger.info(f"Prompts factchecked: {fc_count}")
+        else:
+            logger.info("Prompts factchecked: skipped")
         logger.info(f"Prompts correlated: {len(self.correlated)}")
         logger.info(f"LLM usage: {self.llm.get_usage_stats()}")
         logger.info(f"Reports: {reports}")

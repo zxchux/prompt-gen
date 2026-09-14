@@ -8,7 +8,7 @@ import click
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
 from prompt_gen.config import load_settings
@@ -176,8 +176,10 @@ def analyze(
             f"[bold cyan]Max Pages:[/bold cyan] {settings.crawler.max_pages}\n"
             f"[bold cyan]Top Prompts:[/bold cyan] {settings.prompt_extraction.top_prompts_count}\n"
             f"[bold cyan]LLM Model:[/bold cyan] {settings.openrouter.model}\n"
-            f"[bold cyan]Validation:[/bold cyan] {'Enabled' if not skip_validation else 'Skipped'}\n"
-            f"[bold cyan]Factcheck:[/bold cyan] {'Enabled' if not skip_factcheck else 'Skipped'}\n"
+            f"[bold cyan]Validation:[/bold cyan] "
+            f"{'Enabled' if not skip_validation else 'Skipped'}\n"
+            f"[bold cyan]Factcheck:[/bold cyan] "
+            f"{'Enabled' if not skip_factcheck else 'Skipped'}\n"
             f"[bold cyan]Data Sources:[/bold cyan]\n{data_source}",
             title="[bold green]PromptGen Analysis[/bold green]",
             border_style="green",

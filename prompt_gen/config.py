@@ -7,7 +7,6 @@ from typing import Optional
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-
 # Load .env file early so all os.environ lookups work
 load_dotenv(dotenv_path=Path(".env"), override=False)
 

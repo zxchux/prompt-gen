@@ -19,7 +19,9 @@ from prompt_gen.models import (
 
 logger = logging.getLogger(__name__)
 
-CORRELATION_SYSTEM_PROMPT = """You are a search analytics expert. Analyze the correlation between a search prompt and the available Google Search Console / Google Analytics data.
+CORRELATION_SYSTEM_PROMPT = """\
+You are a search analytics expert. Analyze the correlation between a \
+search prompt and the available Google Search Console / Google Analytics data.
 
 Evaluate:
 1. DATA MATCH: How closely does the prompt match existing search queries in GSC?
@@ -85,7 +87,6 @@ class CorrelationEngine:
     ) -> list[tuple[GSCData, float]]:
         """Return up to ten (query, match_score) pairs, highest score first."""
         matches = []
-        prompt_normalized = self._normalize_query(prompt.prompt_text)
 
         for gsc in gsc_data:
             score = self._fuzzy_match_score(prompt.prompt_text, gsc.query)
@@ -270,7 +271,7 @@ class CorrelationEngine:
                     f"CTR: {gsc.ctr:.3f}, Position: {gsc.position:.1f}"
                 )
             context_parts.append(
-                f"GSC Matching Queries:\n" + "\n".join(gsc_context)
+                "GSC Matching Queries:\n" + "\n".join(gsc_context)
             )
         else:
             context_parts.append("GSC Data: No matching queries found")

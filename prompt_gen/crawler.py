@@ -1,9 +1,7 @@
 """Crawl website pages and sitemaps, then extract text, metadata, and links."""
 
 import logging
-import ssl
 import time
-import urllib.request
 from collections import deque
 from typing import Optional
 from urllib.parse import urljoin, urlparse
@@ -195,9 +193,13 @@ class WebCrawler:
                 # Find URL-like paths in script content
                 paths = re.findall(r'["\']/([\w-]+(?:/[\w-]+)*)["\']', script.string)
                 for path in paths:
-                    if len(path) > 1 and not path.startswith(("static", "assets", "_next", "chunk")):
+                    skip_prefixes = ("static", "assets", "_next", "chunk")
+                    if len(path) > 1 and not path.startswith(skip_prefixes):
                         candidate = urljoin(url, f"/{path}")
-                        if self._is_same_domain(candidate) and self._is_valid_page_url(candidate):
+                        if (
+                            self._is_same_domain(candidate)
+                            and self._is_valid_page_url(candidate)
+                        ):
                             internal_links.append(self._normalize_url(candidate))
 
         # Now decompose non-content elements for BS4 text extraction

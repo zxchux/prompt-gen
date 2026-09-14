@@ -178,15 +178,33 @@ class CSVImporter:
                     if not query:
                         continue
 
-                    clicks = int(self._parse_number(row[clicks_idx])) if clicks_idx is not None and clicks_idx < len(row) else 0
-                    impressions = int(self._parse_number(row[impressions_idx])) if impressions_idx is not None and impressions_idx < len(row) else 0
+                    clicks = (
+                        int(self._parse_number(row[clicks_idx]))
+                        if clicks_idx is not None and clicks_idx < len(row)
+                        else 0
+                    )
+                    impressions = (
+                        int(self._parse_number(row[impressions_idx]))
+                        if impressions_idx is not None
+                        and impressions_idx < len(row)
+                        else 0
+                    )
 
-                    ctr_val = self._parse_number(row[ctr_idx]) if ctr_idx is not None and ctr_idx < len(row) else 0.0
-                    # GSC exports CTR as percentage (e.g., "3.5%") or decimal (0.035)
+                    ctr_val = (
+                        self._parse_number(row[ctr_idx])
+                        if ctr_idx is not None and ctr_idx < len(row)
+                        else 0.0
+                    )
+                    # GSC exports CTR as percentage (e.g., "3.5%") or decimal
                     if ctr_val > 1:
                         ctr_val = ctr_val / 100.0
 
-                    position = self._parse_number(row[position_idx]) if position_idx is not None and position_idx < len(row) else 0.0
+                    position = (
+                        self._parse_number(row[position_idx])
+                        if position_idx is not None
+                        and position_idx < len(row)
+                        else 0.0
+                    )
 
                     gsc_data = GSCData(
                         query=query,
@@ -264,12 +282,42 @@ class CSVImporter:
                     if not page_path:
                         continue
 
-                    sessions = int(self._parse_number(row[sessions_idx])) if sessions_idx is not None and sessions_idx < len(row) else 0
-                    users = int(self._parse_number(row[users_idx])) if users_idx is not None and users_idx < len(row) else 0
-                    pageviews = int(self._parse_number(row[pageviews_idx])) if pageviews_idx is not None and pageviews_idx < len(row) else 0
-                    duration = self._parse_number(row[duration_idx]) if duration_idx is not None and duration_idx < len(row) else 0.0
-                    bounce = self._parse_number(row[bounce_idx]) if bounce_idx is not None and bounce_idx < len(row) else 0.0
-                    conversions = int(self._parse_number(row[conversions_idx])) if conversions_idx is not None and conversions_idx < len(row) else 0
+                    sessions = (
+                        int(self._parse_number(row[sessions_idx]))
+                        if sessions_idx is not None
+                        and sessions_idx < len(row)
+                        else 0
+                    )
+                    users = (
+                        int(self._parse_number(row[users_idx]))
+                        if users_idx is not None
+                        and users_idx < len(row)
+                        else 0
+                    )
+                    pageviews = (
+                        int(self._parse_number(row[pageviews_idx]))
+                        if pageviews_idx is not None
+                        and pageviews_idx < len(row)
+                        else 0
+                    )
+                    duration = (
+                        self._parse_number(row[duration_idx])
+                        if duration_idx is not None
+                        and duration_idx < len(row)
+                        else 0.0
+                    )
+                    bounce = (
+                        self._parse_number(row[bounce_idx])
+                        if bounce_idx is not None
+                        and bounce_idx < len(row)
+                        else 0.0
+                    )
+                    conversions = (
+                        int(self._parse_number(row[conversions_idx]))
+                        if conversions_idx is not None
+                        and conversions_idx < len(row)
+                        else 0
+                    )
 
                     if bounce > 1:
                         bounce = bounce / 100.0
@@ -337,7 +385,12 @@ class CSVImporter:
                     if not page_path:
                         continue
 
-                    organic_sessions = int(self._parse_number(row[sessions_idx])) if sessions_idx is not None and sessions_idx < len(row) else 0
+                    organic_sessions = (
+                        int(self._parse_number(row[sessions_idx]))
+                        if sessions_idx is not None
+                        and sessions_idx < len(row)
+                        else 0
+                    )
 
                     if page_path in page_map:
                         page_map[page_path].organic_sessions = organic_sessions

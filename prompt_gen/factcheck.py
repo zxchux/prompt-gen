@@ -2,7 +2,6 @@
 
 import json
 import logging
-from typing import Any
 
 from prompt_gen.config import FactcheckConfig
 from prompt_gen.llm_client import OpenRouterClient
@@ -15,7 +14,10 @@ from prompt_gen.models import (
 
 logger = logging.getLogger(__name__)
 
-DECOMPOSE_SYSTEM = """You are a factcheck specialist following the Profound factcheck methodology. Your task is to DECOMPOSE a search prompt and its context into individual, atomic claims that can be independently verified.
+DECOMPOSE_SYSTEM = """\
+You are a factcheck specialist following the Profound factcheck methodology. \
+Your task is to DECOMPOSE a search prompt and its context into individual, \
+atomic claims that can be independently verified.
 
 The Profound method requires:
 1. Break the prompt into its constituent factual claims
@@ -40,7 +42,10 @@ Respond with valid JSON:
   "decomposition_reasoning": "Explanation of how claims were extracted"
 }"""
 
-DECONTEXTUALIZE_SYSTEM = """You are a factcheck specialist. Your task is to DECONTEXTUALIZE claims - make each claim fully self-contained so it can be verified independently without needing the original context.
+DECONTEXTUALIZE_SYSTEM = """\
+You are a factcheck specialist. Your task is to DECONTEXTUALIZE claims - \
+make each claim fully self-contained so it can be verified independently \
+without needing the original context.
 
 For each claim:
 1. Replace pronouns with specific references
@@ -59,7 +64,9 @@ Respond with valid JSON:
   ]
 }"""
 
-VERIFY_SYSTEM = """You are a factcheck specialist performing the VERIFICATION step of the Profound factcheck methodology. For each claim, determine whether it is:
+VERIFY_SYSTEM = """\
+You are a factcheck specialist performing the VERIFICATION step of the \
+Profound factcheck methodology. For each claim, determine whether it is:
 
 - VERIFIED: The claim is supported by the provided evidence/content
 - REFUTED: The claim contradicts the provided evidence/content
@@ -86,11 +93,15 @@ Respond with valid JSON:
   ]
 }"""
 
-AGGREGATE_SYSTEM = """You are a factcheck specialist performing the AGGREGATION step of the Profound factcheck methodology. Given the individual claim verification results, produce an overall factcheck verdict for the search prompt.
+AGGREGATE_SYSTEM = """\
+You are a factcheck specialist performing the AGGREGATION step of the \
+Profound factcheck methodology. Given the individual claim verification \
+results, produce an overall factcheck verdict for the search prompt.
 
 Consider:
 1. What proportion of claims were verified vs refuted vs unverifiable?
-2. How critical are the refuted claims? (A single critical refutation can invalidate the whole prompt)
+2. How critical are the refuted claims? (A single critical refutation \
+can invalidate the whole prompt)
 3. What is the overall confidence level?
 4. Is the prompt fundamentally sound despite minor issues?
 
@@ -178,7 +189,6 @@ class ProfoundFactchecker:
                 if claim.claim_text:
                     claims.append(claim)
 
-            decomposition_reasoning = result.get("decomposition_reasoning", "")
             logger.debug(
                 f"Decomposed into {len(claims)} claims: {prompt.prompt_text[:50]}"
             )
@@ -189,7 +199,10 @@ class ProfoundFactchecker:
             # Create a single claim from the prompt itself
             return [
                 FactcheckClaim(
-                    claim_text=f"The search prompt '{prompt.prompt_text}' is relevant to the source content",
+                    claim_text=(
+                        f"The search prompt '{prompt.prompt_text}' "
+                        f"is relevant to the source content"
+                    ),
                     source_context="",
                     is_verifiable=True,
                 )
@@ -381,7 +394,7 @@ class ProfoundFactchecker:
         logger.debug(f"Factcheck Step 3 - Verify: {len(claims)} claims")
         claims = self._step_verify(claims, source_content, prompt)
 
-        logger.debug(f"Factcheck Step 4 - Aggregate")
+        logger.debug("Factcheck Step 4 - Aggregate")
         overall_score, is_sound, confidence, summary = self._step_aggregate(
             claims, prompt
         )
@@ -439,3 +452,7 @@ class ProfoundFactchecker:
         )
 
         return results
+
+
+# Alias for backward-compatible imports
+Factchecker = ProfoundFactchecker
