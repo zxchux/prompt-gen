@@ -75,7 +75,7 @@ def cli():
     "--skip-factcheck",
     is_flag=True,
     default=False,
-    help="Skip the Profound factcheck stage.",
+    help="Skip the factcheck stage.",
 )
 @click.option(
     "--skip-google",
@@ -114,6 +114,12 @@ def cli():
     help="Skip competitor analysis stage.",
 )
 @click.option(
+    "--consensus-passes",
+    default=1,
+    type=int,
+    help="Number of extraction passes for consistency (1=single, 3=recommended for stability).",
+)
+@click.option(
     "--model",
     default=None,
     type=str,
@@ -143,6 +149,7 @@ def analyze(
     competitors: str,
     max_competitors: int,
     skip_competitors: bool,
+    consensus_passes: int,
     model: str,
     output_dir: str,
     log_level: str,
@@ -154,6 +161,7 @@ def analyze(
         promptgen analyze https://example.com --max-pages 100 --skip-google
         promptgen analyze https://example.com --gsc-csv gsc_queries.csv --ga-csv ga_pages.csv
         promptgen analyze https://example.com --competitors "labster.com,chemcollective.org"
+        promptgen analyze https://example.com --consensus-passes 3
     """
     # Parse manual competitors
     manual_competitors = None
@@ -289,6 +297,35 @@ def analyze(
             console.print(
                 f"  ✓ Extracted [green]{len(pipeline.prompts)}[/green] prompts{comp_note}"
             )
+
+            # Stage 2.5: Consistency reconciliation
+            consistency_task = progress.add_task(
+                "[cyan]Reconciling consistency...",
+                total=max(consensus_passes, 1),
+            )
+            pipeline.stage_consistency(
+                target_url=url,
+                consensus_passes=consensus_passes,
+            )
+            progress.update(consistency_task, completed=max(consensus_passes, 1))
+
+            drift = pipeline.drift_report
+            if drift.get("has_history"):
+                drift_score = drift["drift_score"]
+                drift_color = (
+                    "green" if drift_score < 0.2
+                    else "yellow" if drift_score < 0.5
+                    else "red"
+                )
+                console.print(
+                    f"  ✓ Consistency: [{drift_color}]drift {drift_score:.0%}[/{drift_color}] "
+                    f"({drift['new_count']} new, {drift['dropped_count']} dropped, "
+                    f"{drift['stable_count']} stable across {drift['total_historical_runs']} runs)"
+                )
+            else:
+                console.print(
+                    f"  ✓ Consistency: first run — {len(pipeline.prompts)} prompts baselined"
+                )
 
             if not skip_validation:
                 validate_task = progress.add_task(

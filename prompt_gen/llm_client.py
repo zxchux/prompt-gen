@@ -42,11 +42,13 @@ class OpenRouterClient:
         max_tokens: Optional[int] = None,
         response_format: Optional[dict] = None,
         retry_count: int = 3,
+        seed: Optional[int] = None,
     ) -> str:
         """Send a chat request and return the response text.
 
         Model, temperature, and token limits default to the client configuration.
         retry_count is the total number of attempts. Raise RuntimeError if all fail.
+        When seed is provided, it encourages deterministic output (model-dependent).
         """
         self._rate_limit()
 
@@ -63,6 +65,9 @@ class OpenRouterClient:
 
         if response_format:
             kwargs["response_format"] = response_format
+
+        if seed is not None:
+            kwargs["seed"] = seed
 
         last_error = None
         for attempt in range(retry_count):

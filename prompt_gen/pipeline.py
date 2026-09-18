@@ -8,6 +8,7 @@ from typing import Any, Optional
 from prompt_gen.agentic_validator import AgenticValidator
 from prompt_gen.competitor_analyzer import CompetitorAnalyzer
 from prompt_gen.config import Settings
+from prompt_gen.consistency import ConsistencyReconciler
 from prompt_gen.correlation_engine import CorrelationEngine
 from prompt_gen.crawler import WebCrawler
 from prompt_gen.csv_importer import CSVImporter
@@ -46,6 +47,9 @@ class Pipeline:
         self.ga_client = AnalyticsClient(settings.google)
         self.correlation = CorrelationEngine(settings, self.llm)
         self.reporter = ReportGenerator(settings.output_dir)
+        self.reconciler = ConsistencyReconciler(
+            history_dir=str(Path(settings.cache.cache_dir) / "history"),
+        )
 
         # Pipeline state
         self.pages: list[CrawledPage] = []
@@ -55,6 +59,7 @@ class Pipeline:
         self.validations: list[ValidationResult] = []
         self.factchecks: list[FactcheckResult] = []
         self.correlated: list[CorrelatedPrompt] = []
+        self.drift_report: dict = {}
 
         self._cache_dir = Path(settings.cache.cache_dir)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
@@ -135,6 +140,87 @@ class Pipeline:
         )
 
         logger.info(f"Extraction complete: {len(self.prompts)} prompts")
+        return self.prompts
+
+    def stage_consistency(
+        self,
+        target_url: str,
+        consensus_passes: int = 0,
+    ) -> list[ExtractedPrompt]:
+        """
+        Stage 2.5: Apply consistency reconciliation.
+
+        1. If consensus_passes > 1, re-runs extraction multiple times
+           and keeps only prompts that appear consistently.
+        2. Anchors results to historical stable prompts.
+        3. Detects drift from previous runs.
+        4. Saves current run to history.
+
+        Args:
+            target_url: The target URL (for history keying).
+            consensus_passes: Number of additional extraction passes
+                for consensus (0 = skip multi-pass, just do anchoring).
+
+        Returns:
+            Reconciled prompt list.
+        """
+        from urllib.parse import urlparse
+
+        domain = urlparse(target_url).netloc
+
+        logger.info("=== STAGE 2.5: CONSISTENCY RECONCILIATION ===")
+
+        # Multi-pass consensus (if requested)
+        if consensus_passes > 1:
+            logger.info(
+                f"Running {consensus_passes} extraction passes for consensus..."
+            )
+            all_passes = [list(self.prompts)]  # First pass already done
+
+            for pass_num in range(1, consensus_passes):
+                logger.info(f"  Consensus pass {pass_num + 1}/{consensus_passes}...")
+                pass_prompts = self.extractor.extract_prompts(self.pages)
+                all_passes.append(pass_prompts)
+
+            self.prompts = self.reconciler.build_consensus(all_passes)
+            logger.info(
+                f"Consensus: {len(self.prompts)} prompts survived "
+                f"{consensus_passes} passes"
+            )
+
+        # Historical anchoring
+        self.prompts = self.reconciler.anchor_to_history(domain, self.prompts)
+
+        # Drift detection
+        self.drift_report = self.reconciler.detect_drift(domain, self.prompts)
+        if self.drift_report.get("has_history"):
+            logger.info(
+                f"Drift score: {self.drift_report['drift_score']:.2f} "
+                f"({self.drift_report['new_count']} new, "
+                f"{self.drift_report['dropped_count']} dropped)"
+            )
+
+        # Save this run to history
+        self.reconciler.save_run(
+            domain=domain,
+            prompts=self.prompts,
+            run_metadata={
+                "pages_crawled": len(self.pages),
+                "competitors_analyzed": len(self.competitors),
+            },
+        )
+
+        # Re-sort by score after anchoring
+        self.prompts.sort(key=lambda p: p.relevance_score, reverse=True)
+
+        # Trim to top N
+        top_n = self.settings.prompt_extraction.top_prompts_count
+        if len(self.prompts) > top_n:
+            self.prompts = self.prompts[:top_n]
+
+        self._save_cache("consistency", [p.to_dict() for p in self.prompts])
+
+        logger.info(f"Consistency stage complete: {len(self.prompts)} prompts")
         return self.prompts
 
     def stage_competitors(
@@ -405,6 +491,7 @@ class Pipeline:
         skip_competitors: bool = False,
         manual_competitors: Optional[list[str]] = None,
         max_competitors: int = 5,
+        consensus_passes: int = 1,
         gsc_csv_path: Optional[str] = None,
         ga_csv_path: Optional[str] = None,
         progress_callback=None,
@@ -413,12 +500,14 @@ class Pipeline:
 
         Validation, factchecking, competitor analysis, and Google API calls
         can be skipped independently. CSV inputs take precedence over Google APIs.
+        consensus_passes controls multi-pass extraction for consistency (1=single pass).
         """
         logger.info(f"Starting PromptGen pipeline for: {target_url}")
         logger.info(f"Options: skip_google={skip_google_apis}, "
                      f"skip_validation={skip_validation}, "
                      f"skip_factcheck={skip_factcheck}, "
-                     f"skip_competitors={skip_competitors}")
+                     f"skip_competitors={skip_competitors}, "
+                     f"consensus_passes={consensus_passes}")
         if manual_competitors:
             logger.info(f"Manual competitors: {manual_competitors}")
         if gsc_csv_path:
@@ -447,6 +536,12 @@ class Pipeline:
 
         if not self.prompts:
             raise RuntimeError("No prompts extracted from crawled pages")
+
+        # Stage 2.5: Consistency reconciliation
+        self.stage_consistency(
+            target_url=target_url,
+            consensus_passes=consensus_passes,
+        )
 
         if not skip_validation:
             self.stage_validate()
@@ -496,6 +591,13 @@ class Pipeline:
         else:
             logger.info("Prompts factchecked: skipped")
         logger.info(f"Prompts correlated: {len(self.correlated)}")
+        if self.drift_report.get("has_history"):
+            logger.info(
+                f"Consistency drift: {self.drift_report['drift_score']:.2f} "
+                f"({self.drift_report['new_count']} new, "
+                f"{self.drift_report['dropped_count']} dropped, "
+                f"{self.drift_report['stable_count']} stable)"
+            )
         logger.info(f"LLM usage: {self.llm.get_usage_stats()}")
         logger.info(f"Reports: {reports}")
         logger.info("=" * 60)

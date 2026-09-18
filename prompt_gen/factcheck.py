@@ -15,11 +15,11 @@ from prompt_gen.models import (
 logger = logging.getLogger(__name__)
 
 DECOMPOSE_SYSTEM = """\
-You are a factcheck specialist following the Profound factcheck methodology. \
+You are a factcheck specialist following a rigorous claim-based factcheck methodology. \
 Your task is to DECOMPOSE a search prompt and its context into individual, \
 atomic claims that can be independently verified.
 
-The Profound method requires:
+The factcheck method requires:
 1. Break the prompt into its constituent factual claims
 2. Each claim should be a single, atomic assertion
 3. Include implicit claims (assumptions embedded in the prompt)
@@ -66,7 +66,7 @@ Respond with valid JSON:
 
 VERIFY_SYSTEM = """\
 You are a factcheck specialist performing the VERIFICATION step of the \
-Profound factcheck methodology. For each claim, determine whether it is:
+claim-based factcheck methodology. For each claim, determine whether it is:
 
 - VERIFIED: The claim is supported by the provided evidence/content
 - REFUTED: The claim contradicts the provided evidence/content
@@ -95,7 +95,7 @@ Respond with valid JSON:
 
 AGGREGATE_SYSTEM = """\
 You are a factcheck specialist performing the AGGREGATION step of the \
-Profound factcheck methodology. Given the individual claim verification \
+claim-based factcheck methodology. Given the individual claim verification \
 results, produce an overall factcheck verdict for the search prompt.
 
 Consider:
@@ -124,7 +124,7 @@ Respond with valid JSON:
 }"""
 
 
-class ProfoundFactchecker:
+class Factchecker:
     """Check prompt claims against source content through four model-assisted steps."""
 
     def __init__(self, config: FactcheckConfig, llm_client: OpenRouterClient):
@@ -419,7 +419,7 @@ class ProfoundFactchecker:
         results = []
         total = len(prompts)
 
-        logger.info(f"Starting Profound factcheck for {total} prompts")
+        logger.info(f"Starting factcheck for {total} prompts")
 
         for i, prompt in enumerate(prompts):
             logger.info(
@@ -455,4 +455,4 @@ class ProfoundFactchecker:
 
 
 # Alias for backward-compatible imports
-Factchecker = ProfoundFactchecker
+Factchecker = Factchecker
