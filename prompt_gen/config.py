@@ -45,6 +45,7 @@ class OpenRouterConfig(BaseModel):
     max_tokens: int = 4096
     temperature: float = 0.3
     request_timeout: int = 120
+    enable_prompt_cache: bool = True
 
 
 class CrawlerConfig(BaseModel):
@@ -141,6 +142,7 @@ def load_settings() -> Settings:
             max_tokens=_env_int("OPENROUTER_MAX_TOKENS", 4096),
             temperature=_env_float("OPENROUTER_TEMPERATURE", 0.3),
             request_timeout=_env_int("OPENROUTER_TIMEOUT", 120),
+            enable_prompt_cache=_env_bool("ENABLE_PROMPT_CACHE", True),
         ),
         crawler=CrawlerConfig(
             max_pages=_env_int("MAX_PAGES", 500),
